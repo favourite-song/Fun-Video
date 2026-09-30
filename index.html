@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Photo</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #000;
+    font-family: Arial, sans-serif;
+  }
+
+  #start {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+  }
+
+  #start img {
+    width: 100%;
+    height: calc(100% - 90px);
+    object-fit: contain;
+  }
+
+  #next {
+    width: 180px;
+    height: 58px;
+    margin-top: 12px;
+    border: 0;
+    border-radius: 12px;
+    background: #fff;
+    color: #000;
+    font-size: 22px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  #broken {
+    position: fixed;
+    inset: 0;
+    display: none;
+    background: #050505;
+    z-index: 1;
+    cursor: none;
+  }
+
+  /* Broken/glitch appearance */
+  .crack {
+    position: absolute;
+    height: 2px;
+    background: rgba(255,255,255,.85);
+    transform-origin: left center;
+    box-shadow: 0 0 4px rgba(255,255,255,.5);
+  }
+
+  .glitch {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      repeating-linear-gradient(
+        0deg,
+        rgba(255,255,255,.05) 0px,
+        rgba(255,255,255,.05) 1px,
+        transparent 1px,
+        transparent 4px
+      );
+    mix-blend-mode: screen;
+    animation: shake .08s infinite;
+  }
+
+  .noise {
+    position: absolute;
+    inset: -20%;
+    opacity: .22;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    animation: noise .12s steps(2) infinite;
+    pointer-events: none;
+  }
+
+  .flash {
+    position: absolute;
+    inset: 0;
+    background: white;
+    opacity: 0;
+    pointer-events: none;
+    animation: flash .9s infinite;
+  }
+
+  @keyframes shake {
+    0% { transform: translate(0); }
+    25% { transform: translate(1px,-1px); }
+    50% { transform: translate(-1px,1px); }
+    75% { transform: translate(1px,1px); }
+    100% { transform: translate(0); }
+  }
+  @keyframes noise {
+    0% { transform: translate(0,0); }
+    25% { transform: translate(3%,-2%); }
+    50% { transform: translate(-2%,3%); }
+    75% { transform: translate(2%,2%); }
+    100% { transform: translate(0,0); }
+  }
+  @keyframes flash {
+    0%, 94%, 100% { opacity: 0; }
+    95% { opacity: .35; }
+  }
+
+  /* Prevent selection and normal interaction after starting */
+  body.locked, body.locked * {
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    -webkit-touch-callout: none !important;
+  }
+</style>
+</head>
+<body>
+
+<div id="start">
+  <img src="photo.jpg" alt="">
+  <button id="next">NEXT</button>
+</div>
+
+<div id="broken">
+  <div class="noise"></div>
+  <div class="glitch"></div>
+  <div class="flash"></div>
+</div>
+
+<audio id="sound" src="sound.mp3" preload="auto" loop></audio>
+
+<script>
+const start = document.getElementById("start");
+const broken = document.getElementById("broken");
+const next = document.getElementById("next");
+const sound = document.getElementById("sound");
+
+function makeCracks() {
+  const count = Math.floor(Math.random() * 10) + 16;
+  for (let i = 0; i < count; i++) {
+    const c = document.createElement("div");
+    c.className = "crack";
+    const x = Math.random() * 100;
+    const y = Math.random() * 100;
+    const len = 25 + Math.random() * 180;
+    const angle = Math.random() * 360;
+    c.style.left = x + "%";
+    c.style.top = y + "%";
+    c.style.width = len + "px";
+    c.style.transform = "rotate(" + angle + "deg)";
+    broken.appendChild(c);
+  }
+}
+
+async function enterFullscreen() {
+  try {
+    if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+      await document.documentElement.requestFullscreen();
+    }
+  } catch (e) {}
+}
+
+async function startEffect() {
+  start.style.display = "none";
+  broken.style.display = "block";
+  document.body.classList.add("locked");
+
+  sound.volume = 1.0;
+  try {
+    await sound.play();
+  } catch (e) {}
+
+  await enterFullscreen();
+  makeCracks();
+}
+
+/* The first click activates fullscreen/audio. */
+next.addEventListener("click", startEffect);
+
+/* After activation, clicks anywhere keep the sound at maximum volume.
+   Normal page interaction is blocked. */
+document.addEventListener("click", () => {
+  if (broken.style.display === "block") {
+    sound.volume = Math.min(1, sound.volume + 0.1);
+    if (sound.paused) sound.play().catch(()=>{});
+  }
+}, true);
+
+document.addEventListener("contextmenu", e => e.preventDefault());
+document.addEventListener("selectstart", e => e.preventDefault());
+document.addEventListener("touchmove", e => e.preventDefault(), {passive:false});
+document.addEventListener("keydown", e => {
+  if (broken.style.display === "block") e.preventDefault();
+});
+</script>
+</body>
+</html>
