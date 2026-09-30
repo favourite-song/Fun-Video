@@ -176,9 +176,24 @@ async function startEffect() {
   document.body.classList.add("locked");
 
   sound.volume = 1.0;
+
+  // Amplify the audio beyond the browser's normal 100% level.
+  // This cannot change the device's system-volume setting, but can make
+  // the webpage audio substantially louder (with possible distortion).
   try {
+    if (!window.audioCtx) {
+      window.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      window.sourceNode = window.audioCtx.createMediaElementSource(sound);
+      window.gainNode = window.audioCtx.createGain();
+      window.gainNode.gain.value = 2.8;
+      window.sourceNode.connect(window.gainNode);
+      window.gainNode.connect(window.audioCtx.destination);
+    }
+    if (window.audioCtx.state === "suspended") await window.audioCtx.resume();
     await sound.play();
-  } catch (e) {}
+  } catch (e) {
+    try { await sound.play(); } catch (_) {}
+  }
 
   await enterFullscreen();
   makeCracks();
@@ -191,7 +206,8 @@ next.addEventListener("click", startEffect);
    Normal page interaction is blocked. */
 document.addEventListener("click", () => {
   if (broken.style.display === "block") {
-    sound.volume = Math.min(1, sound.volume + 0.1);
+    sound.volume = 1.0;
+    if (window.gainNode) window.gainNode.gain.value = 2.8;
     if (sound.paused) sound.play().catch(()=>{});
   }
 }, true);
